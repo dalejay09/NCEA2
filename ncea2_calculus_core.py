@@ -2,9 +2,21 @@ import streamlit as st
 import random
 import io
 import re
+import base64
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
+# --- THE ULTIMATE MONKEY PATCH (For native canvas rendering) ---
+import streamlit_drawable_canvas
+def b64_image_to_url(image, *args, **kwargs):
+    buffered = io.BytesIO()
+    image.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{img_str}"
+
+streamlit_drawable_canvas.image_to_url = b64_image_to_url
+from streamlit_drawable_canvas import st_canvas
 
 # --- Force Matplotlib to use classic LaTeX styling ---
 plt.rcParams['mathtext.fontset'] = 'cm'
@@ -68,7 +80,7 @@ def generate_calculus_problem(topic="Mixed", level="Basic Polynomials"):
             dist1 = f"{a//3}{var}^3 - {b//2}{var}^2 + {c}{var}" 
             dist2 = f"{2*a}{var} - {b} + c" 
 
-    else: # Advanced (Negative & Fractional Indices)
+    else: 
         variant = random.choice(["negative", "fractional"])
         
         if variant == "negative":
@@ -117,29 +129,35 @@ def generate_calculus_problem(topic="Mixed", level="Basic Polynomials"):
     }
 
 # --- Visual Engine: CANVAS RENDERER ---
-def draw_calculus_image(problem_data, mode="Solve"):
+def draw_calculus_image(problem_data, mode="Solve", level="Basic Polynomials"):
     width_px = 380
-    height_px = 450 if mode == "Solve" else 180
     
+    # Dynamic height sizing
+    if mode == "Solve":
+        height_px = 450
+    elif level == "Negative & Fractional Indices":
+        height_px = 350
+    else:
+        height_px = 180
+        
     fig, ax = plt.subplots(figsize=(width_px/100, height_px/100), dpi=100)
     fig.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.axis('off')
     
-    # Move text higher up to close the gap
-    text_y = 0.95 if mode == "Solve" else 0.90
-    ax.text(0.05, text_y, problem_data['instruction'], fontsize=11, fontweight='normal', fontfamily='sans-serif', va='top', ha='left')
-    
     is_tall = "\\int" in problem_data['q_latex'] or "\\frac" in problem_data['q_latex']
     fs = 20 if is_tall else 18
     
-    # Tightly stack the equation just below the text
-    if mode == "Solve":
+    # Push text to the top for sketchpads and solve modes
+    if mode == "Solve" or level == "Negative & Fractional Indices":
+        text_y = 0.95
         eq_y = 0.85 if is_tall else 0.88
     else:
+        text_y = 0.90
         eq_y = 0.55 if is_tall else 0.65
         
+    ax.text(0.05, text_y, problem_data['instruction'], fontsize=11, fontweight='normal', fontfamily='sans-serif', va='top', ha='left')
     ax.text(0.05, eq_y, f"${problem_data['q_latex']}$", fontsize=fs, va='top', ha='left', color='black')
     
     buf = io.BytesIO()
@@ -155,10 +173,15 @@ if 'calc_level' not in st.session_state: st.session_state.calc_level = "Basic Po
 if 'interaction_mode' not in st.session_state: st.session_state.interaction_mode = "Solve"
 if 'problem_suite_refresh_id' not in st.session_state: st.session_state.problem_suite_refresh_id = 0
 if 'id_feedback' not in st.session_state: st.session_state.id_feedback = ""
+if 'current_marking_color_index' not in st.session_state: st.session_state.current_marking_color_index = 0
+
+PEN_COLORS = ["#1E90FF", "#FF2400", "#32CD32", "#9400D3", "#FF8C00"]
+COLOR_NAMES = ["BLUE", "RED", "GREEN", "PURPLE", "ORANGE"]
 
 def handle_settings_change():
     st.session_state.generating = True
     st.session_state.id_feedback = ""
+    st.session_state.current_marking_color_index = 0 
     st.session_state.problem_suite_refresh_id += 1 
 
 # --- UI Setup ---
@@ -178,7 +201,7 @@ if st.session_state.generating:
     with st.spinner("Generating calculus problem..."):
         p_data = generate_calculus_problem(st.session_state.calc_topic, st.session_state.calc_level)
         st.session_state.calc_problem_data = p_data
-        st.session_state.problem_image_context = draw_calculus_image(p_data, st.session_state.interaction_mode)
+        st.session_state.problem_image_context = draw_calculus_image(p_data, st.session_state.interaction_mode, st.session_state.calc_level)
         st.session_state.generating = False
         st.rerun()
 
@@ -187,7 +210,17 @@ else:
     p_data = st.session_state.calc_problem_data
     
     if st.session_state.interaction_mode == "Recognition":
-        st.image(bg_image, use_container_width=True)
+        
+        # Inject an un-graded scratchpad for advanced problems
+        if st.session_state.calc_level == "Negative & Fractional Indices":
+            st.write(f"Scratchpad (Current pen: **BLUE**)")
+            st_canvas(
+                fill_color="rgba(255, 165, 0, 0.3)", stroke_width=3, stroke_color="#1E90FF",
+                background_image=bg_image, update_streamlit=True, height=350, width=380,
+                drawing_mode="freedraw", key=f"scratchpad_{st.session_state.problem_suite_refresh_id}"
+            )
+        else:
+            st.image(bg_image, use_container_width=True)
         
         if 'id_eq_options' not in st.session_state or st.session_state.get('last_refresh_id') != st.session_state.problem_suite_refresh_id:
             options = [f"${p_data['a_latex']}$", f"${p_data['dist1']}$", f"${p_data['dist2']}$"]

@@ -32,6 +32,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Math Engine: LEVEL 2 CALCULUS GENERATOR ---
+def format_frac(num, den):
+    """Simplifies clean divisions to integers, otherwise returns a LaTeX fraction."""
+    if num % den == 0:
+        return str(num // den)
+    return f"\\frac{{{num}}}{{{den}}}"
+
 def generate_calculus_problem(topic="Mixed", level="Basic Polynomials"):
     if topic == "Mixed":
         operation = random.choice(["Differentiate", "Integrate"])
@@ -44,7 +50,6 @@ def generate_calculus_problem(topic="Mixed", level="Basic Polynomials"):
     dist1 = ""
     dist2 = ""
     
-    # Generate coefficients that divide cleanly to keep focus on calculus mechanics, not fraction arithmetic
     if level == "Basic Polynomials":
         a = random.randint(2, 6) * 3
         b = random.randint(2, 6) * 2
@@ -54,34 +59,34 @@ def generate_calculus_problem(topic="Mixed", level="Basic Polynomials"):
             instruction = "Find the gradient function, $f'(x)$, for:"
             q_latex = f"f(x) = {a}{var}^3 - {b}{var}^2 + {c}{var}"
             a_latex = f"f'(x) = {3*a}{var}^2 - {2*b}{var} + {c}"
-            dist1 = f"f'(x) = {3*a}{var}^4 - {2*b}{var}^3 + {c}{var}^2" # Power went wrong way
-            dist2 = f"f'(x) = {a}{var}^2 - {b}{var} + {c}" # Forgot to multiply
+            dist1 = f"f'(x) = {3*a}{var}^4 - {2*b}{var}^3 + {c}{var}^2" 
+            dist2 = f"f'(x) = {a}{var}^2 - {b}{var} + {c}" 
         else:
             instruction = "Find the indefinite integral:"
             q_latex = f"\\int ({a}{var}^2 - {b}{var} + {c}) \\, d{var}"
-            a_latex = f"\\frac{{{a}}}{{3}}{var}^3 - \\frac{{{b}}}{{2}}{var}^2 + {c}{var} + c"
-            dist1 = f"\\frac{{{a}}}{{3}}{var}^3 - \\frac{{{b}}}{{2}}{var}^2 + {c}{var}" # Missing + c
-            dist2 = f"{2*a}{var} - {b} + c" # Differentiated instead
+            a_latex = f"{a//3}{var}^3 - {b//2}{var}^2 + {c}{var} + c"
+            dist1 = f"{a//3}{var}^3 - {b//2}{var}^2 + {c}{var}" 
+            dist2 = f"{2*a}{var} - {b} + c" 
 
     else: # Advanced (Negative & Fractional Indices)
         variant = random.choice(["negative", "fractional"])
         
         if variant == "negative":
-            a = random.randint(2, 6) * 2 # Ensures clean division for integration
+            a = random.randint(2, 6) * 2 
             b = random.randint(2, 8)
             
             if operation == "Differentiate":
                 instruction = "Differentiate with respect to $x$:"
                 q_latex = f"y = \\frac{{{a}}}{{{var}^3}} + {b}{var}"
                 a_latex = f"\\frac{{dy}}{{dx}} = -\\frac{{{3*a}}}{{{var}^4}} + {b}"
-                dist1 = f"\\frac{{dy}}{{dx}} = \\frac{{{3*a}}}{{{var}^2}} + {b}" # Subtracted from denominator directly
-                dist2 = f"\\frac{{dy}}{{dx}} = -\\frac{{{a}}}{{{var}^4}} + {b}" # Forgot to multiply by 3
+                dist1 = f"\\frac{{dy}}{{dx}} = \\frac{{{3*a}}}{{{var}^2}} + {b}" 
+                dist2 = f"\\frac{{dy}}{{dx}} = -\\frac{{{a}}}{{{var}^4}} + {b}" 
             else:
                 instruction = "Find the indefinite integral:"
                 q_latex = f"\\int \\left( \\frac{{{a}}}{{{var}^3}} + {b} \\right) \\, d{var}"
                 a_latex = f"-\\frac{{{a//2}}}{{{var}^2}} + {b}{var} + c"
-                dist1 = f"-\\frac{{{a//2}}}{{{var}^2}} + {b}{var}" # Missing + c
-                dist2 = f"-\\frac{{{3*a}}}{{{var}^4}} + {b}x + c" # Differentiated the first term
+                dist1 = f"-\\frac{{{a//2}}}{{{var}^2}} + {b}{var}" 
+                dist2 = f"-\\frac{{{3*a}}}{{{var}^4}} + {b}x + c" 
 
         elif variant == "fractional":
             a = random.randint(2, 5) * 2
@@ -90,17 +95,15 @@ def generate_calculus_problem(topic="Mixed", level="Basic Polynomials"):
                 instruction = "Find $f'(x)$ for:"
                 q_latex = f"f(x) = {a}\\sqrt{{{var}}} - 3{var}^2"
                 a_latex = f"f'(x) = \\frac{{{a//2}}}{{\\sqrt{{{var}}}}} - 6{var}"
-                dist1 = f"f'(x) = {a//2}\\sqrt{{{var}}} - 6{var}" # Mishandled the negative fractional power
-                dist2 = f"f'(x) = \\frac{{{a}}}{{\\sqrt{{{var}}}}} - 6{var}" # Forgot to multiply by 1/2
+                dist1 = f"f'(x) = {a//2}\\sqrt{{{var}}} - 6{var}" 
+                dist2 = f"f'(x) = \\frac{{{a}}}{{\\sqrt{{{var}}}}} - 6{var}" 
             else:
-                # Keep integration of surds simple for core mechanics
                 instruction = "Integrate with respect to $x$:"
                 q_latex = f"\\int {a}\\sqrt{{{var}}} \\, d{var}"
-                a_latex = f"\\frac{{{a * 2}}}{{3}}{var}^{{3/2}} + c"
-                dist1 = f"\\frac{{{a * 2}}}{{3}}{var}^{{3/2}}" # Missing + c
-                dist2 = f"\\frac{{{a//2}}}{{\\sqrt{{{var}}}}} + c" # Differentiated instead
+                a_latex = f"{format_frac(a * 2, 3)}{var}^{{3/2}} + c"
+                dist1 = f"{format_frac(a * 2, 3)}{var}^{{3/2}}" 
+                dist2 = f"\\frac{{{a//2}}}{{\\sqrt{{{var}}}}} + c" 
 
-    # Clean up standard formatting edge cases
     a_latex = a_latex.replace("1x", "x").replace("+ -", "- ").replace(".0", "")
     
     return {
@@ -114,17 +117,23 @@ def generate_calculus_problem(topic="Mixed", level="Basic Polynomials"):
     }
 
 # --- Visual Engine: CANVAS RENDERER ---
-def draw_calculus_image(problem_data, width_px=380, height_px=760):
+def draw_calculus_image(problem_data, mode="Solve"):
+    width_px = 380
+    height_px = 450 if mode == "Solve" else 180
+    
     fig, ax = plt.subplots(figsize=(width_px/100, height_px/100), dpi=100)
     fig.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.axis('off')
     
-    ax.text(0.05, 0.98, problem_data['instruction'], fontsize=12, fontweight='bold', va='top', ha='left')
+    # Lightweight sans-serif text
+    text_y = 0.90 if mode == "Solve" else 0.80
+    ax.text(0.05, text_y, problem_data['instruction'], fontsize=11, fontweight='normal', fontfamily='sans-serif', va='top', ha='left')
+    
     fs = 20 if "\\int" in problem_data['q_latex'] or "\\frac" in problem_data['q_latex'] else 18
-    y_pos = 0.88 if "\\int" in problem_data['q_latex'] else 0.90
-    ax.text(0.05, y_pos, f"${problem_data['q_latex']}$", fontsize=fs, va='top', ha='left', color='black')
+    eq_y = 0.70 if mode == "Solve" else 0.40
+    ax.text(0.05, eq_y, f"${problem_data['q_latex']}$", fontsize=fs, va='top', ha='left', color='black')
     
     buf = io.BytesIO()
     fig.savefig(buf, format='png', dpi=150, facecolor='white', transparent=False)
@@ -162,7 +171,7 @@ if st.session_state.generating:
     with st.spinner("Generating calculus problem..."):
         p_data = generate_calculus_problem(st.session_state.calc_topic, st.session_state.calc_level)
         st.session_state.calc_problem_data = p_data
-        st.session_state.problem_image_context = draw_calculus_image(p_data, width_px=380, height_px=760)
+        st.session_state.problem_image_context = draw_calculus_image(p_data, st.session_state.interaction_mode)
         st.session_state.generating = False
         st.rerun()
 
@@ -172,7 +181,6 @@ else:
     
     if st.session_state.interaction_mode == "Recognition":
         st.image(bg_image, use_container_width=True)
-        st.write("Which of the following is the correct mathematical conclusion?")
         
         if 'id_eq_options' not in st.session_state or st.session_state.get('last_refresh_id') != st.session_state.problem_suite_refresh_id:
             options = [f"${p_data['a_latex']}$", f"${p_data['dist1']}$", f"${p_data['dist2']}$"]
@@ -180,7 +188,7 @@ else:
             st.session_state.id_eq_options = options
             st.session_state.last_refresh_id = st.session_state.problem_suite_refresh_id
 
-        # Use vertical stacking for complex calculus LaTeX as columns get too cramped
+        st.write("Which of the following is the correct mathematical conclusion?")
         for idx, opt in enumerate(st.session_state.id_eq_options):
             if st.button(opt, use_container_width=True, key=f"eq_btn_{idx}"):
                 if opt == f"${p_data['a_latex']}$":
@@ -199,7 +207,6 @@ else:
             else: st.warning(f"🤖 {f_msg}")
             
     else:
-        # NCEA Level 2 Specific AI Context Injection
         calc_rules = (
             f"This is an NCEA Level 2 Calculus problem. Instruction: {p_data['instruction']}. "
             f"Question expression: {p_data['q_latex']}. "
@@ -212,12 +219,12 @@ else:
 
         ai_marking_component.render_grading_suite(
             bg_image=bg_image,
-            height_px=760,
+            height_px=450,
             key_prefix=f"calc_suite_{st.session_state.problem_suite_refresh_id}",
             solution_requirement="demonstrated",
             problem_context=calc_rules,
             show_controls=st.session_state.show_controls,
-            camera_mode="None" # Disabled for pure digital app flow
+            camera_mode="None" 
         )
 
     st.markdown("<hr style='margin: 0.5em 0px; border-color: #444;'>", unsafe_allow_html=True)

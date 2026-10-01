@@ -55,8 +55,6 @@ def render_grading_suite(
     current_tool = st.session_state.get(TOOL_SELECTOR_KEY, "🖌️") if show_controls else "🖌️"
     active_stroke_color = PEN_COLORS[current_color_index] if current_tool == "🖌️" else "#FFFFFE"
     active_stroke_width = 3 if current_tool == "🖌️" else 15
-
-    st.write(f"Current pen: **{current_color_name}**")
     
     canvas_result = st_canvas(
         fill_color="rgba(255, 165, 0, 0.3)", stroke_width=active_stroke_width, stroke_color=active_stroke_color,

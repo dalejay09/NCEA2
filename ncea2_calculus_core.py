@@ -267,7 +267,7 @@ with col_actions:
                 st.rerun()
         else:
             timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
-            st.download_button("⬇️️ Download Worksheet", data=st.session_state.pdf_bytes, file_name=f"Calc_Core_Mechanics_{timestamp_str}.pdf", mime="application/pdf", use_container_width=True, type="primary")
+            st.download_button("⬇ Download Worksheet", data=st.session_state.pdf_bytes, file_name=f"Calc_Core_Mechanics_{timestamp_str}.pdf", mime="application/pdf", use_container_width=True, type="primary")
             if st.button("🗑️ Clear / Reset PDF", use_container_width=True):
                 st.session_state.pdf_bytes = None
                 st.rerun()
@@ -275,7 +275,8 @@ with col_actions:
         st.markdown("<hr style='margin: 0.5em 0px; border-color: #444;'>", unsafe_allow_html=True)
         marker_url = st.secrets.get("WORKSHEET_MARKER_APP_URL", "#")
         st.markdown(f"**2. Mark physical worksheets**")
-        st.markdown(f'<a href="{marker_url}" target="_self"><button style="width:100%; background-color:#28a745; color:white; border:none; padding:0.5rem; border-radius:4px; font-weight:bold; cursor:pointer;">📸 Mark My Worksheet</button></a>', unsafe_allow_html=True)
+        # Target blank ensures it pops open cleanly without iframe restrictions
+        st.markdown(f'<a href="{marker_url}" target="_blank" rel="noopener noreferrer"><button style="width:100%; background-color:#28a745; color:white; border:none; padding:0.5rem; border-radius:4px; font-weight:bold; cursor:pointer;">📸 Mark My Worksheet</button></a>', unsafe_allow_html=True)
 
 with col_set:
     with st.popover("⚙️", use_container_width=True):
@@ -283,7 +284,7 @@ with col_set:
         st.selectbox("Focus Area", ["Mixed", "Differentiate", "Integrate"], key="calc_topic", on_change=handle_settings_change)
         st.radio("Difficulty", ["Basic Polynomials", "Negative & Fractional Indices"], key="calc_level", on_change=handle_settings_change)
         st.radio("Interaction Mode", ["Recognition", "Solve"], key="interaction_mode", on_change=handle_settings_change)
-        st.toggle("Canvas Controls", key="show_controls", value=True, on_change=handle_settings_change)
+        st.toggle("Canvas Controls", key="show_controls", value=False, on_change=handle_settings_change)
 
 # --- Master App Logic ---
 if st.session_state.generating:

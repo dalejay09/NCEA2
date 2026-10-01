@@ -1,0 +1,8 @@
+streamlit
+streamlit-drawable-canvas
+matplotlib
+numpy
+Pillow
+google-genai
+fpdf2
+pydantic

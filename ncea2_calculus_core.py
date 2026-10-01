@@ -238,6 +238,7 @@ if 'generating' not in st.session_state: st.session_state.generating = True
 if 'calc_topic' not in st.session_state: st.session_state.calc_topic = "Mixed"
 if 'calc_level' not in st.session_state: st.session_state.calc_level = "Basic Polynomials"
 if 'interaction_mode' not in st.session_state: st.session_state.interaction_mode = "Solve"
+if 'camera_mode' not in st.session_state: st.session_state.camera_mode = "None"
 if 'problem_suite_refresh_id' not in st.session_state: st.session_state.problem_suite_refresh_id = 0
 if 'id_feedback' not in st.session_state: st.session_state.id_feedback = ""
 if 'current_marking_color_index' not in st.session_state: st.session_state.current_marking_color_index = 0
@@ -275,7 +276,6 @@ with col_actions:
         st.markdown("<hr style='margin: 0.5em 0px; border-color: #444;'>", unsafe_allow_html=True)
         marker_url = st.secrets.get("WORKSHEET_MARKER_APP_URL", "#")
         st.markdown(f"**2. Mark physical worksheets**")
-        # Target blank ensures it pops open cleanly without iframe restrictions
         st.markdown(f'<a href="{marker_url}" target="_blank" rel="noopener noreferrer"><button style="width:100%; background-color:#28a745; color:white; border:none; padding:0.5rem; border-radius:4px; font-weight:bold; cursor:pointer;">📸 Mark My Worksheet</button></a>', unsafe_allow_html=True)
 
 with col_set:
@@ -283,7 +283,8 @@ with col_set:
         st.write("**Settings**")
         st.selectbox("Focus Area", ["Mixed", "Differentiate", "Integrate"], key="calc_topic", on_change=handle_settings_change)
         st.radio("Difficulty", ["Basic Polynomials", "Negative & Fractional Indices"], key="calc_level", on_change=handle_settings_change)
-        st.radio("Interaction Mode", ["Recognition", "Solve"], key="interaction_mode", on_change=handle_settings_change)
+        st.radio("Interaction Mode", ["Solve", "Recognition"], key="interaction_mode", on_change=handle_settings_change)
+        st.radio("Camera Mode", ["None", "App", "Native"], key="camera_mode", horizontal=True, on_change=handle_settings_change)
         st.toggle("Canvas Controls", key="show_controls", value=False, on_change=handle_settings_change)
 
 # --- Master App Logic ---
@@ -352,7 +353,7 @@ else:
             solution_requirement="demonstrated",
             problem_context=calc_rules,
             show_controls=st.session_state.show_controls,
-            camera_mode="None" 
+            camera_mode=st.session_state.camera_mode 
         )
 
     st.markdown("<hr style='margin: 0.5em 0px; border-color: #444;'>", unsafe_allow_html=True)

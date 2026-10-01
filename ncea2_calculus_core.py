@@ -127,12 +127,19 @@ def draw_calculus_image(problem_data, mode="Solve"):
     ax.set_ylim(0, 1)
     ax.axis('off')
     
-    # Lightweight sans-serif text
-    text_y = 0.90 if mode == "Solve" else 0.80
+    # Move text higher up to close the gap
+    text_y = 0.95 if mode == "Solve" else 0.90
     ax.text(0.05, text_y, problem_data['instruction'], fontsize=11, fontweight='normal', fontfamily='sans-serif', va='top', ha='left')
     
-    fs = 20 if "\\int" in problem_data['q_latex'] or "\\frac" in problem_data['q_latex'] else 18
-    eq_y = 0.70 if mode == "Solve" else 0.40
+    is_tall = "\\int" in problem_data['q_latex'] or "\\frac" in problem_data['q_latex']
+    fs = 20 if is_tall else 18
+    
+    # Tightly stack the equation just below the text
+    if mode == "Solve":
+        eq_y = 0.85 if is_tall else 0.88
+    else:
+        eq_y = 0.55 if is_tall else 0.65
+        
     ax.text(0.05, eq_y, f"${problem_data['q_latex']}$", fontsize=fs, va='top', ha='left', color='black')
     
     buf = io.BytesIO()

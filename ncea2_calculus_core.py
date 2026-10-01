@@ -267,10 +267,15 @@ with col_actions:
                 st.rerun()
         else:
             timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
-            st.download_button("⬇️ Download Worksheet", data=st.session_state.pdf_bytes, file_name=f"Calc_Core_Mechanics_{timestamp_str}.pdf", mime="application/pdf", use_container_width=True, type="primary")
+            st.download_button("⬇️️ Download Worksheet", data=st.session_state.pdf_bytes, file_name=f"Calc_Core_Mechanics_{timestamp_str}.pdf", mime="application/pdf", use_container_width=True, type="primary")
             if st.button("🗑️ Clear / Reset PDF", use_container_width=True):
                 st.session_state.pdf_bytes = None
                 st.rerun()
+        
+        st.markdown("<hr style='margin: 0.5em 0px; border-color: #444;'>", unsafe_allow_html=True)
+        marker_url = st.secrets.get("WORKSHEET_MARKER_APP_URL", "#")
+        st.markdown(f"**2. Mark physical worksheets**")
+        st.markdown(f'<a href="{marker_url}" target="_self"><button style="width:100%; background-color:#28a745; color:white; border:none; padding:0.5rem; border-radius:4px; font-weight:bold; cursor:pointer;">📸 Mark My Worksheet</button></a>', unsafe_allow_html=True)
 
 with col_set:
     with st.popover("⚙️", use_container_width=True):
@@ -295,6 +300,7 @@ else:
     
     if st.session_state.interaction_mode == "Recognition":
         if st.session_state.calc_level == "Negative & Fractional Indices":
+            st.markdown("Scratchpad:")
             st_canvas(
                 fill_color="rgba(255, 165, 0, 0.3)", stroke_width=3, stroke_color="#1E90FF",
                 background_image=bg_image, update_streamlit=True, height=350, width=380,

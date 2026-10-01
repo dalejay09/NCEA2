@@ -1,6 +1,7 @@
 import streamlit as st
 import random
 import io
+import json
 import re
 import base64
 import matplotlib
@@ -23,6 +24,10 @@ plt.rcParams['mathtext.fontset'] = 'cm'
 plt.rcParams['font.family'] = 'serif'
 
 from PIL import Image
+from datetime import datetime
+from matplotlib.backends.backend_pdf import PdfPages
+from pydantic import BaseModel, Field
+from google import genai
 import ai_marking_component
 
 st.set_page_config(page_title="NCEA 2 - CALCULUS (Core Mechanics)", page_icon="📈", layout="centered")
@@ -42,6 +47,14 @@ st.markdown("""
     div[data-testid="stToolbar"] { display: none; }
     </style>
 """, unsafe_allow_html=True)
+
+# --- AI Output Schemas for PDF ---
+class SolutionRow(BaseModel):
+    q_num: int = Field(description="The question number (1 to 20)")
+    steps: str = Field(description="Step-by-step solving method using valid LaTeX formatting")
+
+class AIWorksheetSolutions(BaseModel):
+    solutions: list[SolutionRow]
 
 # --- Math Engine: LEVEL 2 CALCULUS GENERATOR ---
 def format_frac(num, den):
@@ -132,7 +145,6 @@ def generate_calculus_problem(topic="Mixed", level="Basic Polynomials"):
 def draw_calculus_image(problem_data, mode="Solve", level="Basic Polynomials"):
     width_px = 380
     
-    # Dynamic height sizing
     if mode == "Solve":
         height_px = 450
     elif level == "Negative & Fractional Indices":
@@ -149,7 +161,6 @@ def draw_calculus_image(problem_data, mode="Solve", level="Basic Polynomials"):
     is_tall = "\\int" in problem_data['q_latex'] or "\\frac" in problem_data['q_latex']
     fs = 20 if is_tall else 18
     
-    # Push text to the top for sketchpads and solve modes
     if mode == "Solve" or level == "Negative & Fractional Indices":
         text_y = 0.95
         eq_y = 0.85 if is_tall else 0.88
@@ -166,6 +177,62 @@ def draw_calculus_image(problem_data, mode="Solve", level="Basic Polynomials"):
     buf.seek(0)
     return Image.open(buf).convert('RGBA').copy()
 
+# --- Worksheet PDF Generator ---
+def create_pdf_bytes(topic, level):
+    buffer = io.BytesIO()
+    try:
+        with PdfPages(buffer) as pdf:
+            problems = [generate_calculus_problem(topic, level) for _ in range(20)]
+            ai_steps = {}
+            try:
+                client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+                payload = "".join([f"Q{i+1}: {p['instruction']} {p['q_latex']} | Final Ans: {p['a_latex']}\n" for i, p in enumerate(problems)])
+                prompt = (
+                    "Write concise step-by-step calculus solutions using valid LaTeX math expressions enclosed in single dollar signs. "
+                    "Use \\n to separate steps so they break into new lines cleanly. "
+                    "Data:\n" + payload
+                )
+                response = client.models.generate_content(
+                    model='gemini-3.6-flash', contents=[prompt],
+                    config=dict(response_mime_type="application/json", response_schema=AIWorksheetSolutions, temperature=0.1)
+                )
+                for item in json.loads(response.text).get("solutions", []):
+                    cleaned_step = item["steps"].replace("**", "").replace(r"\n", "\n")
+                    ai_steps[item["q_num"]] = cleaned_step
+            except Exception:
+                pass
+            
+            fig_ws, axes = plt.subplots(5, 4, figsize=(8.27, 11.69))
+            fig_ws.subplots_adjust(left=0.03, right=0.97, top=0.92, bottom=0.03, wspace=0.15, hspace=0.25)
+            fig_ws.suptitle("NCEA Level 2 Calculus Practice Worksheet", fontsize=16, fontweight='bold', ha='center')
+            
+            for idx, p_data in enumerate(problems):
+                row, col = divmod(idx, 4)
+                ax = axes[row, col]
+                ax.axis('off')
+                ax.text(0.05, 0.95, f"Q{idx+1}: {p_data['instruction']}", fontsize=7.5, fontweight='bold', va='top')
+                ax.text(0.05, 0.70, f"${p_data['q_latex']}$", fontsize=12, va='top')
+                
+            pdf.savefig(fig_ws); plt.close(fig_ws)
+
+            fig_ans, ax_ans = plt.subplots(figsize=(8.27, 11.69))
+            ax_ans.axis('off')
+            ax_ans.text(0.5, 0.96, "Answer Key & Steps", fontsize=16, fontweight='bold', ha='center')
+            for i in range(10):
+                left_idx, right_idx = i, i + 10
+                txt_l = f"Q{left_idx+1}: ${problems[left_idx]['a_latex']}$\n{ai_steps.get(left_idx+1, '')}"
+                txt_r = f"Q{right_idx+1}: ${problems[right_idx]['a_latex']}$\n{ai_steps.get(right_idx+1, '')}"
+                y_pos = 0.90 - (i * 0.088)
+                ax_ans.text(0.04, y_pos, txt_l, fontsize=7.0, va='top', wrap=True)
+                ax_ans.text(0.52, y_pos, txt_r, fontsize=7.0, va='top', wrap=True)
+            pdf.savefig(fig_ans); plt.close(fig_ans)
+    except Exception as e:
+        st.error(f"PDF Generation Error: {e}")
+        raise e
+
+    buffer.seek(0)
+    return buffer.getvalue()
+
 # --- State Management ---
 if 'generating' not in st.session_state: st.session_state.generating = True
 if 'calc_topic' not in st.session_state: st.session_state.calc_topic = "Mixed"
@@ -174,20 +241,37 @@ if 'interaction_mode' not in st.session_state: st.session_state.interaction_mode
 if 'problem_suite_refresh_id' not in st.session_state: st.session_state.problem_suite_refresh_id = 0
 if 'id_feedback' not in st.session_state: st.session_state.id_feedback = ""
 if 'current_marking_color_index' not in st.session_state: st.session_state.current_marking_color_index = 0
-
-PEN_COLORS = ["#1E90FF", "#FF2400", "#32CD32", "#9400D3", "#FF8C00"]
-COLOR_NAMES = ["BLUE", "RED", "GREEN", "PURPLE", "ORANGE"]
+if 'pdf_bytes' not in st.session_state: st.session_state.pdf_bytes = None
 
 def handle_settings_change():
     st.session_state.generating = True
     st.session_state.id_feedback = ""
     st.session_state.current_marking_color_index = 0 
+    st.session_state.pdf_bytes = None
     st.session_state.problem_suite_refresh_id += 1 
 
 # --- UI Setup ---
 st.title("NCEA 2 - CALCULUS (Core Mechanics) 📈")
 
-col_empty, col_set = st.columns([5, 1])
+col_actions, col_set = st.columns([5, 1])
+with col_actions:
+    with st.popover("📄 Worksheet Actions", use_container_width=True):
+        st.markdown("**1. Create a physical worksheet**")
+        if st.session_state.pdf_bytes is None:
+            if st.button("⚙️ Generate Worksheet PDF", use_container_width=True):
+                with st.spinner("Compiling Master PDF Grid..."):
+                    try:
+                        st.session_state.pdf_bytes = create_pdf_bytes(st.session_state.calc_topic, st.session_state.calc_level)
+                    except Exception:
+                        st.session_state.pdf_bytes = None
+                st.rerun()
+        else:
+            timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
+            st.download_button("⬇️ Download Worksheet", data=st.session_state.pdf_bytes, file_name=f"Calc_Core_Mechanics_{timestamp_str}.pdf", mime="application/pdf", use_container_width=True, type="primary")
+            if st.button("🗑️ Clear / Reset PDF", use_container_width=True):
+                st.session_state.pdf_bytes = None
+                st.rerun()
+
 with col_set:
     with st.popover("⚙️", use_container_width=True):
         st.write("**Settings**")
@@ -210,10 +294,7 @@ else:
     p_data = st.session_state.calc_problem_data
     
     if st.session_state.interaction_mode == "Recognition":
-        
-        # Inject an un-graded scratchpad for advanced problems
         if st.session_state.calc_level == "Negative & Fractional Indices":
-            st.write(f"Scratchpad (Current pen: **BLUE**)")
             st_canvas(
                 fill_color="rgba(255, 165, 0, 0.3)", stroke_width=3, stroke_color="#1E90FF",
                 background_image=bg_image, update_streamlit=True, height=350, width=380,
